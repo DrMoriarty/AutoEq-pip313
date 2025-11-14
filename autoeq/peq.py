@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import warnings
 from copy import deepcopy
 from time import time
 from abc import ABC, abstractmethod
+from typing import Optional, List, Dict, Any, Tuple
 import numpy as np
+import numpy.typing as npt
 from matplotlib import pyplot as plt, ticker
 from scipy.optimize import fmin_slsqp
 from scipy.signal import find_peaks
@@ -17,10 +21,23 @@ from autoeq.constants import DEFAULT_SHELF_FILTER_MIN_FC, DEFAULT_SHELF_FILTER_M
 
 
 class PEQFilter(ABC):
-    def __init__(self, f, fs,
-                 fc=None, optimize_fc=None, min_fc=None, max_fc=None,
-                 q=None, optimize_q=None, min_q=None, max_q=None,
-                 gain=None, optimize_gain=None, min_gain=None, max_gain=None):
+    def __init__(
+            self,
+            f: npt.NDArray[np.float64],
+            fs: int,
+            fc: Optional[float] = None,
+            optimize_fc: Optional[bool] = None,
+            min_fc: Optional[float] = None,
+            max_fc: Optional[float] = None,
+            q: Optional[float] = None,
+            optimize_q: Optional[bool] = None,
+            min_q: Optional[float] = None,
+            max_q: Optional[float] = None,
+            gain: Optional[float] = None,
+            optimize_gain: Optional[bool] = None,
+            min_gain: Optional[float] = None,
+            max_gain: Optional[float] = None
+    ) -> None:
         self.f = np.array(f)
         self._fs = fs
 
