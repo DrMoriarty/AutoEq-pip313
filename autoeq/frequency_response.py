@@ -548,112 +548,30 @@ class FrequencyResponse:
             sound_signature=None, sound_signature_smoothing_window_size=DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
             min_mean_error=False):
         """Sets target and error curves."""
-        # 디버깅 디렉토리 생성
-        debug_dir = os.path.join(os.getcwd(), 'debug_plots')
-        os.makedirs(debug_dir, exist_ok=True)
-        
-        # 초기 상태 저장
-        self_orig = self.copy()
-        target_orig = target.copy()
-        
-        print(f"compensate 시작: target.raw 길이: {len(target.raw)}, self.frequency 길이: {len(self.frequency)}")
-        
-        # 디버깅: 초기 상태 시각화
-        fig_initial, ax_initial = plt.subplots(figsize=(10, 6))
-        ax_initial.semilogx(self.frequency, self.raw, label='Original Raw')
-        ax_initial.semilogx(target.frequency, target.raw, label='Target Raw')
-        ax_initial.set_title('초기 주파수 응답')
-        ax_initial.set_xlabel('Frequency (Hz)')
-        ax_initial.set_ylabel('Amplitude (dB)')
-        ax_initial.grid(True)
-        ax_initial.legend()
-        fig_initial.savefig(os.path.join(debug_dir, 'comp_1_initial.png'))
-        plt.close(fig_initial)
-        
         target = target.copy()
-        # 타겟 주파수를 자신의 주파수와 동일하게 보간
         target.interpolate(f=self.frequency)
         target.center()
 
-        # 디버깅: 보간 후 시각화
-        fig_interp, ax_interp = plt.subplots(figsize=(10, 6))
-        ax_interp.semilogx(target_orig.frequency, target_orig.raw, '--', alpha=0.5, label='Target Raw (original)')
-        ax_interp.semilogx(target.frequency, target.raw, label='Target Raw (interpolated)')
-        ax_interp.set_title('보간 후 타겟 주파수 응답')
-        ax_interp.set_xlabel('Frequency (Hz)')
-        ax_interp.set_ylabel('Amplitude (dB)')
-        ax_interp.grid(True)
-        ax_interp.legend()
-        fig_interp.savefig(os.path.join(debug_dir, 'comp_2_interpolated.png'))
-        plt.close(fig_interp)
-        
-        # 저주파 영역 확대
-        fig_interp_low, ax_interp_low = plt.subplots(figsize=(10, 6))
-        ax_interp_low.semilogx(target_orig.frequency, target_orig.raw, '--', alpha=0.5, label='Target Raw (original)')
-        ax_interp_low.semilogx(target.frequency, target.raw, label='Target Raw (interpolated)')
-        ax_interp_low.set_title('보간 후 타겟 주파수 응답 (저주파 영역)')
-        ax_interp_low.set_xlabel('Frequency (Hz)')
-        ax_interp_low.set_ylabel('Amplitude (dB)')
-        ax_interp_low.set_xlim(10, 500)
-        ax_interp_low.grid(True)
-        ax_interp_low.legend()
-        fig_interp_low.savefig(os.path.join(debug_dir, 'comp_3_interpolated_low.png'))
-        plt.close(fig_interp_low)
-        
-        # 타겟 커브 생성
+        # Create target curve with boost and tilt
         target_curve = self.create_target(
             bass_boost_gain=bass_boost_gain, bass_boost_fc=bass_boost_fc, bass_boost_q=bass_boost_q,
             treble_boost_gain=treble_boost_gain, treble_boost_fc=treble_boost_fc, treble_boost_q=treble_boost_q,
             tilt=tilt, fs=fs)
-        
-        print(f"타겟 커브 생성 후: target.raw 길이: {len(target.raw)}, target_curve 길이: {len(target_curve)}")
-        
-        # 디버깅: 타겟 커브 시각화
-        fig_target, ax_target = plt.subplots(figsize=(10, 6))
-        ax_target.semilogx(self.frequency, target_curve, label='Target Curve')
-        ax_target.set_title('생성된 타겟 커브')
-        ax_target.set_xlabel('Frequency (Hz)')
-        ax_target.set_ylabel('Amplitude (dB)')
-        ax_target.grid(True)
-        ax_target.legend()
-        fig_target.savefig(os.path.join(debug_dir, 'comp_4_target_curve.png'))
-        plt.close(fig_target)
 
-        # 크기 확인 및 맞추기 - 이 부분을 개선
-        if len(target.raw) != len(self.frequency):  # 보간이 실패했는지 확인
-            print(f"보간 실패 감지: target.raw 길이: {len(target.raw)}, self.frequency 길이: {len(self.frequency)}")
-            # SciPy의 보간 함수로 강제로 크기 맞추기
+        # Ensure target.raw matches frequency length
+        if len(target.raw) != len(self.frequency):
             from scipy.interpolate import interp1d
-            
-            # target.raw를 self.frequency와 같은 크기로 강제 보간
-            # 로그 스케일을 사용하여 주파수 특성 보존
             f_interp = interp1d(
-                np.log10(target.frequency), 
+                np.log10(target.frequency),
                 target.raw,
                 bounds_error=False,
                 fill_value="extrapolate"
             )
             target.raw = f_interp(np.log10(self.frequency))
-            print(f"보간 후: target.raw 길이: {len(target.raw)}")
-            
-            # 디버깅: 강제 보간 후 시각화
-            fig_forced, ax_forced = plt.subplots(figsize=(10, 6))
-            ax_forced.semilogx(target_orig.frequency, target_orig.raw, '--', alpha=0.5, label='Target Raw (original)')
-            ax_forced.semilogx(self.frequency, target.raw, label='Target Raw (forced interpolation)')
-            ax_forced.set_title('강제 보간 후 타겟 주파수 응답')
-            ax_forced.set_xlabel('Frequency (Hz)')
-            ax_forced.set_ylabel('Amplitude (dB)')
-            ax_forced.grid(True)
-            ax_forced.legend()
-            fig_forced.savefig(os.path.join(debug_dir, 'comp_5_forced_interp.png'))
-            plt.close(fig_forced)
-        
-        # target_curve 크기 확인 및 맞추기
+
+        # Ensure target_curve matches frequency length
         if len(target_curve) != len(self.frequency):
-            print(f"타겟 커브 크기 불일치: target_curve 길이: {len(target_curve)}, self.frequency 길이: {len(self.frequency)}")
-            # create_target이 다른 크기를 반환한 경우 (이상적으로는 발생하지 않아야 함)
             from scipy.interpolate import interp1d
-            
             f_interp = interp1d(
                 np.log10(self.frequency[:len(target_curve)]),
                 target_curve,
@@ -661,48 +579,9 @@ class FrequencyResponse:
                 fill_value="extrapolate"
             )
             target_curve = f_interp(np.log10(self.frequency))
-            print(f"보간 후: target_curve 길이: {len(target_curve)}")
-            
-            # 디버깅: 타겟 커브 보간 후 시각화
-            fig_target_interp, ax_target_interp = plt.subplots(figsize=(10, 6))
-            ax_target_interp.semilogx(self.frequency, target_curve, label='Target Curve (interpolated)')
-            ax_target_interp.set_title('보간된 타겟 커브')
-            ax_target_interp.set_xlabel('Frequency (Hz)')
-            ax_target_interp.set_ylabel('Amplitude (dB)')
-            ax_target_interp.grid(True)
-            ax_target_interp.legend()
-            fig_target_interp.savefig(os.path.join(debug_dir, 'comp_6_target_curve_interp.png'))
-            plt.close(fig_target_interp)
-        
-        # 이제 두 배열의 크기가 같아야 합니다
+
+        # Combine target raw and curve
         self.target = target.raw + target_curve
-        
-        # 디버깅: 최종 타겟 시각화 (타겟 + 타겟 커브)
-        fig_final, ax_final = plt.subplots(figsize=(10, 6))
-        ax_final.semilogx(self.frequency, target.raw, '--', label='Target Raw')
-        ax_final.semilogx(self.frequency, target_curve, '--', label='Target Curve')
-        ax_final.semilogx(self.frequency, self.target, label='Final Target')
-        ax_final.set_title('최종 타겟 주파수 응답')
-        ax_final.set_xlabel('Frequency (Hz)')
-        ax_final.set_ylabel('Amplitude (dB)')
-        ax_final.grid(True)
-        ax_final.legend()
-        fig_final.savefig(os.path.join(debug_dir, 'comp_7_final_target.png'))
-        plt.close(fig_final)
-        
-        # 저주파 영역 확대
-        fig_final_low, ax_final_low = plt.subplots(figsize=(10, 6))
-        ax_final_low.semilogx(self.frequency, target.raw, '--', label='Target Raw')
-        ax_final_low.semilogx(self.frequency, target_curve, '--', label='Target Curve')
-        ax_final_low.semilogx(self.frequency, self.target, label='Final Target')
-        ax_final_low.set_title('최종 타겟 주파수 응답 (저주파 영역)')
-        ax_final_low.set_xlabel('Frequency (Hz)')
-        ax_final_low.set_ylabel('Amplitude (dB)')
-        ax_final_low.set_xlim(10, 500)
-        ax_final_low.grid(True)
-        ax_final_low.legend()
-        fig_final_low.savefig(os.path.join(debug_dir, 'comp_8_final_target_low.png'))
-        plt.close(fig_final_low)
 
         if sound_signature is not None:
             # Sound signature given, add it to target curve
@@ -718,52 +597,12 @@ class FrequencyResponse:
                 self.target += sound_signature.raw
 
         self.error = self.raw - self.target
-        
-        # 디버깅: 오차 시각화
-        fig_error, ax_error = plt.subplots(figsize=(10, 6))
-        ax_error.semilogx(self.frequency, self.raw, label='Raw')
-        ax_error.semilogx(self.frequency, self.target, label='Target')
-        ax_error.semilogx(self.frequency, self.error, label='Error')
-        ax_error.set_title('오차 곡선')
-        ax_error.set_xlabel('Frequency (Hz)')
-        ax_error.set_ylabel('Amplitude (dB)')
-        ax_error.grid(True)
-        ax_error.legend()
-        fig_error.savefig(os.path.join(debug_dir, 'comp_9_error.png'))
-        plt.close(fig_error)
-        
-        # 저주파 영역 확대
-        fig_error_low, ax_error_low = plt.subplots(figsize=(10, 6))
-        ax_error_low.semilogx(self.frequency, self.raw, label='Raw')
-        ax_error_low.semilogx(self.frequency, self.target, label='Target')
-        ax_error_low.semilogx(self.frequency, self.error, label='Error')
-        ax_error_low.set_title('오차 곡선 (저주파 영역)')
-        ax_error_low.set_xlabel('Frequency (Hz)')
-        ax_error_low.set_ylabel('Amplitude (dB)')
-        ax_error_low.set_xlim(10, 500)
-        ax_error_low.grid(True)
-        ax_error_low.legend()
-        fig_error_low.savefig(os.path.join(debug_dir, 'comp_10_error_low.png'))
-        plt.close(fig_error_low)
-        
+
         if min_mean_error:
             # Shift error by it's mean in range 100 Hz to 10 kHz
             delta = np.mean(self.error[np.logical_and(self.frequency >= 100, self.frequency <= 10000)])
             self.error -= delta
             self.target += delta
-            
-            # 디버깅: 최소 평균 오차 적용 후 시각화
-            fig_min_error, ax_min_error = plt.subplots(figsize=(10, 6))
-            ax_min_error.semilogx(self.frequency, self.raw, label='Raw')
-            ax_min_error.semilogx(self.frequency, self.target, label='Target (with min error)')
-            ax_min_error.semilogx(self.frequency, self.error, label='Error (with min error)')
-            ax_min_error.set_title(f'최소 평균 오차 적용 후 (delta: {delta:.2f} dB)')
-            ax_min_error.set_xlabel('Frequency (Hz)')
-            ax_min_error.set_ylabel('Amplitude (dB)')
-            ax_min_error.grid(True)
-            ax_min_error.legend()
-            fig_min_error.savefig(os.path.join(debug_dir, 'comp_11_min_error.png'))
-            plt.close(fig_min_error)
 
         # Smoothed error and equalization results are affected by error calculation, reset them
         self.reset(
