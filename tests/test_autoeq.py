@@ -31,7 +31,7 @@ class TestAutoEq(unittest.TestCase):
             name='target',
             frequency=[20, 50, 200, 1000, 3000, 10000, 20000],
             raw=[6, 6, -1, 0, 8, 1, -10])
-        fr.interpolate(pol_order=2)
+        fr.interpolate()
         fr.smoothen(window_size=2, treble_window_size=2)
         fr.center()
         fr.write_csv(self._target)
