@@ -3,7 +3,7 @@
 This document summarizes the performance optimizations implemented in the AutoEQ-pip313 fork.
 
 ## Version
-Current version: 1.4.0
+Current version: 1.4.1
 
 ## Optimization Phases
 
