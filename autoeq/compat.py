@@ -6,7 +6,7 @@ Detects Python 3.14 free-threaded mode and provides optimal executor selection.
 """
 
 import sys
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from typing import Type, Union
 
 # Detect Python 3.14 free-threaded mode

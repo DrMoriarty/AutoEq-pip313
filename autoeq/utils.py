@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Union
+
 import numpy as np
 import numpy.typing as npt
 from scipy.special import expit

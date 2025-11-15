@@ -12,7 +12,7 @@ header_pattern = r'frequency(?:,(?:raw|smoothed|error|error_smoothed|equalizatio
 float_pattern = r'-?\d+(?:\.\d+)?'
 autoeq_pattern = re.compile(rf'{header_pattern}(?:\n{float_pattern}(?:,{float_pattern})+)+')
 rew_float_pattern = rf'(?:{float_pattern}|\?)'
-rew_separator = rf'(?:, |; | |\t)'
+rew_separator = r'(?:, |; | |\t)'
 rew_pattern = re.compile(rf'^(?:\*.*\n)*\* Freq\(Hz\){rew_separator}SPL\(dB\){rew_separator}Phase\(degrees\)\n(?:{rew_float_pattern}{rew_separator}{rew_float_pattern}{rew_separator}{rew_float_pattern})+\n*')
 crinacle_pattern = re.compile(rf'[\s\n]?Frequency\tdB\tUnweighted(?:\n{float_pattern}\t{float_pattern})+[.\n]?')
 

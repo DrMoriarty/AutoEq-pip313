@@ -77,10 +77,8 @@ select = [
     "F",   # pyflakes
     "I",   # isort
 ]
-ignore = [
-    "E203",  # whitespace before ':'
-    "W503",  # line break before binary operator
-]
+# Note: E203 and W503 are flake8-specific rules, not needed in Ruff
+# Ruff handles these cases automatically
 
 # Pytest configuration
 [tool.pytest.ini_options]
