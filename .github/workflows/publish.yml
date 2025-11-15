@@ -1,6 +1,7 @@
 name: Publish to PyPI
 
 # Trigger workflow on push to master branch
+# PR에서는 테스트를 실행하지 않음 (신경쓰이므로)
 on:
   push:
     branches:
