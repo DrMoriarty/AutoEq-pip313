@@ -582,26 +582,39 @@ class FrequencyResponse:
             min_mean_error: bool = False
     ) -> None:
         """Sets target and error curves."""
-        target = target.copy()
-        target.interpolate(f=self.frequency)
-        target.center()
+        # Optimized: Extract and interpolate target.raw without copying entire object
+        # Create interpolator for target
+        if not np.array_equal(target.frequency, self.frequency):
+            # Need to interpolate target to match self.frequency
+            k_order = 3 if len(target.frequency) >= 4 else 1
+            try:
+                interpolator = InterpolatedUnivariateSpline(
+                    np.log10(target.frequency), target.raw, k=k_order)
+            except ValueError:
+                interpolator = InterpolatedUnivariateSpline(
+                    np.log10(target.frequency), target.raw, k=1)
+            target_raw_interp = interpolator(np.log10(self.frequency))
+        else:
+            target_raw_interp = target.raw.copy()
+
+        # Center the interpolated target (calculate center value and subtract)
+        # This is more efficient than creating a temporary FrequencyResponse object
+        k_order = 3 if len(self.frequency) >= 4 else 1
+        try:
+            center_interpolator = InterpolatedUnivariateSpline(
+                np.log10(self.frequency), target_raw_interp, k=k_order)
+        except ValueError:
+            center_interpolator = InterpolatedUnivariateSpline(
+                np.log10(self.frequency), target_raw_interp, k=1)
+        # Calculate center at 1000 Hz (default)
+        center_value = center_interpolator(np.log10(1000))
+        target_raw_centered = target_raw_interp - center_value
 
         # Create target curve with boost and tilt
         target_curve = self.create_target(
             bass_boost_gain=bass_boost_gain, bass_boost_fc=bass_boost_fc, bass_boost_q=bass_boost_q,
             treble_boost_gain=treble_boost_gain, treble_boost_fc=treble_boost_fc, treble_boost_q=treble_boost_q,
             tilt=tilt, fs=fs)
-
-        # Ensure target.raw matches frequency length
-        if len(target.raw) != len(self.frequency):
-            from scipy.interpolate import interp1d
-            f_interp = interp1d(
-                np.log10(target.frequency),
-                target.raw,
-                bounds_error=False,
-                fill_value="extrapolate"
-            )
-            target.raw = f_interp(np.log10(self.frequency))
 
         # Ensure target_curve matches frequency length
         if len(target_curve) != len(self.frequency):
@@ -614,8 +627,8 @@ class FrequencyResponse:
             )
             target_curve = f_interp(np.log10(self.frequency))
 
-        # Combine target raw and curve
-        self.target = target.raw + target_curve
+        # Combine target raw and curve (target_raw_centered is already interpolated and centered)
+        self.target = target_raw_centered + target_curve
 
         if sound_signature is not None:
             # Sound signature given, add it to target curve
