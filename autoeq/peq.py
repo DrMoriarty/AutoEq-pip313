@@ -350,7 +350,12 @@ class HighShelf(ShelfFilter):
             # greatest
             min_ix = np.sum(self.f < max(40, self.min_fc))
             max_ix = np.sum(self.f < min(10000, self.max_fc))
-            ix = np.argmax([np.abs(np.mean(target[ix:])) for ix in range(min_ix, max_ix)])
+            # Phase 3 optimization: Vectorize mean calculation using cumsum
+            target_slice = target[min_ix:max_ix]
+            cumsum_rev = np.cumsum(target_slice[::-1])[::-1]
+            counts = np.arange(len(target_slice), 0, -1)
+            means = cumsum_rev / counts
+            ix = np.argmax(np.abs(means)) + min_ix
             self.fc = np.clip(self.f[ix], self.min_fc, self.max_fc)
             params.append(np.log10(self.fc))
         if self.optimize_q:
@@ -402,8 +407,12 @@ class LowShelf(ShelfFilter):
             # greatest
             min_ix = np.sum(self.f < max(40, self.min_fc))
             max_ix = np.sum(self.f < min(10000, self.max_fc))
-            ix = np.argmax([np.abs(np.mean(target[:ix + 1])) for ix in range(min_ix, max_ix)])
-            ix += min_ix
+            # Phase 3 optimization: Vectorize mean calculation using cumsum
+            target_slice = target[min_ix:max_ix]
+            cumsum_fwd = np.cumsum(target_slice)
+            counts = np.arange(1, len(target_slice) + 1)
+            means = cumsum_fwd / counts
+            ix = np.argmax(np.abs(means)) + min_ix
             self.fc = np.clip(self.f[ix], self.min_fc, self.max_fc)
             params.append(np.log10(self.fc))
         if self.optimize_q:
