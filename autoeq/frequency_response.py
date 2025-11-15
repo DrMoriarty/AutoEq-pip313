@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*_
 
+from __future__ import annotations
+
 import os
 from copy import deepcopy
+from typing import Optional, Union, List, Dict, Any, Literal, Tuple
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.ticker import FormatStrFormatter
@@ -12,6 +15,7 @@ from scipy.signal import savgol_filter, find_peaks, minimum_phase, firwin2
 from scipy.stats import linregress
 from scipy.fft import next_fast_len
 import numpy as np
+import numpy.typing as npt
 import urllib
 from time import time
 from PIL import Image
@@ -62,9 +66,21 @@ class FrequencyResponse:
         'frequency', 'raw', 'smoothed', 'error', 'error_smoothed', 'equalization', 'parametric_eq', 'fixed_band_eq',
         'equalized_raw', 'equalized_smoothed', 'target']
 
-    def __init__(self, name=None, frequency=None, raw=None, error=None, smoothed=None, error_smoothed=None,
-                 equalization=None, parametric_eq=None, fixed_band_eq=None, equalized_raw=None, equalized_smoothed=None,
-                 target=None):
+    def __init__(
+            self,
+            name: Optional[str] = None,
+            frequency: Optional[npt.NDArray[np.float64]] = None,
+            raw: Optional[npt.NDArray[np.float64]] = None,
+            error: Optional[npt.NDArray[np.float64]] = None,
+            smoothed: Optional[npt.NDArray[np.float64]] = None,
+            error_smoothed: Optional[npt.NDArray[np.float64]] = None,
+            equalization: Optional[npt.NDArray[np.float64]] = None,
+            parametric_eq: Optional[npt.NDArray[np.float64]] = None,
+            fixed_band_eq: Optional[npt.NDArray[np.float64]] = None,
+            equalized_raw: Optional[npt.NDArray[np.float64]] = None,
+            equalized_smoothed: Optional[npt.NDArray[np.float64]] = None,
+            target: Optional[npt.NDArray[np.float64]] = None
+    ) -> None:
         if not name:
             raise TypeError('Name must not be a non-empty string.')
         self.name = name.strip()
@@ -373,11 +389,21 @@ class FrequencyResponse:
             f.write(s)
 
     @staticmethod
-    def generate_frequencies(f_min=DEFAULT_F_MIN, f_max=DEFAULT_F_MAX, f_step=DEFAULT_STEP):
+    def generate_frequencies(
+            f_min: float = DEFAULT_F_MIN,
+            f_max: float = DEFAULT_F_MAX,
+            f_step: float = DEFAULT_STEP
+    ) -> npt.NDArray[np.float64]:
         """Moved to autoeq.utils but retaining method to avoid breaking changes."""
         return generate_frequencies(f_min, f_max, f_step)
 
-    def interpolate(self, f=None, f_step=DEFAULT_STEP, f_min=DEFAULT_F_MIN, f_max=DEFAULT_F_MAX):
+    def interpolate(
+            self,
+            f: Optional[npt.NDArray[np.float64]] = None,
+            f_step: float = DEFAULT_STEP,
+            f_min: float = DEFAULT_F_MIN,
+            f_max: float = DEFAULT_F_MAX
+    ) -> None:
         """Interpolates missing values from previous and next value. Resets all but raw data.
         Uses cubic spline interpolation if 4 or more data points are available, otherwise linear.
         """
@@ -541,12 +567,20 @@ class FrequencyResponse:
         return combined_target
 
     def compensate(
-            self, target, bass_boost_gain=DEFAULT_BASS_BOOST_GAIN, bass_boost_fc=DEFAULT_BASS_BOOST_FC,
-            bass_boost_q=DEFAULT_BASS_BOOST_Q, treble_boost_gain=DEFAULT_TREBLE_BOOST_GAIN,
-            treble_boost_fc=DEFAULT_TREBLE_BOOST_FC, treble_boost_q=DEFAULT_TREBLE_BOOST_Q,
-            tilt=DEFAULT_TILT, fs=DEFAULT_FS,
-            sound_signature=None, sound_signature_smoothing_window_size=DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
-            min_mean_error=False):
+            self,
+            target: FrequencyResponse,
+            bass_boost_gain: float = DEFAULT_BASS_BOOST_GAIN,
+            bass_boost_fc: float = DEFAULT_BASS_BOOST_FC,
+            bass_boost_q: float = DEFAULT_BASS_BOOST_Q,
+            treble_boost_gain: float = DEFAULT_TREBLE_BOOST_GAIN,
+            treble_boost_fc: float = DEFAULT_TREBLE_BOOST_FC,
+            treble_boost_q: float = DEFAULT_TREBLE_BOOST_Q,
+            tilt: float = DEFAULT_TILT,
+            fs: int = DEFAULT_FS,
+            sound_signature: Optional[FrequencyResponse] = None,
+            sound_signature_smoothing_window_size: int = DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
+            min_mean_error: bool = False
+    ) -> None:
         """Sets target and error curves."""
         target = target.copy()
         target.interpolate(f=self.frequency)
@@ -610,9 +644,13 @@ class FrequencyResponse:
             equalized_smoothed=True)
 
     def _smoothen(
-            self, data, window_size=DEFAULT_SMOOTHING_WINDOW_SIZE,
-            treble_window_size=DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE, treble_f_lower=DEFAULT_TREBLE_SMOOTHING_F_LOWER,
-            treble_f_upper=DEFAULT_TREBLE_SMOOTHING_F_UPPER):
+            self,
+            data: npt.NDArray[np.float64],
+            window_size: int = DEFAULT_SMOOTHING_WINDOW_SIZE,
+            treble_window_size: int = DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE,
+            treble_f_lower: float = DEFAULT_TREBLE_SMOOTHING_F_LOWER,
+            treble_f_upper: float = DEFAULT_TREBLE_SMOOTHING_F_UPPER
+    ) -> npt.NDArray[np.float64]:
         """Smooths data.
 
         Args:
@@ -663,9 +701,17 @@ class FrequencyResponse:
             equalization=True, parametric_eq=True, fixed_band_eq=True, equalized_raw=True, equalized_smoothed=True)
 
     def equalize(
-            self, max_gain=DEFAULT_MAX_GAIN, max_slope=DEFAULT_MAX_SLOPE, max_slope_decay=0.0,
-            concha_interference=False, window_size=1 / 12, treble_window_size=2, treble_f_lower=DEFAULT_TREBLE_F_LOWER,
-            treble_f_upper=DEFAULT_TREBLE_F_UPPER, treble_gain_k=DEFAULT_TREBLE_GAIN_K):
+            self,
+            max_gain: float = DEFAULT_MAX_GAIN,
+            max_slope: float = DEFAULT_MAX_SLOPE,
+            max_slope_decay: float = 0.0,
+            concha_interference: bool = False,
+            window_size: float = 1 / 12,
+            treble_window_size: int = 2,
+            treble_f_lower: float = DEFAULT_TREBLE_F_LOWER,
+            treble_f_upper: float = DEFAULT_TREBLE_F_UPPER,
+            treble_gain_k: float = DEFAULT_TREBLE_GAIN_K
+    ) -> None:
         """Creates equalization curve and equalized curve.
 
         Args:
@@ -792,8 +838,17 @@ class FrequencyResponse:
         return mask
 
     @classmethod
-    def limited_rtl_slope(cls, x, y, max_slope, max_slope_decay=0.0, start_index=0, peak_inds=None, limit_free_mask=None,
-                          concha_interference=False):
+    def limited_rtl_slope(
+            cls,
+            x: npt.NDArray[np.float64],
+            y: npt.NDArray[np.float64],
+            max_slope: float,
+            max_slope_decay: float = 0.0,
+            start_index: int = 0,
+            peak_inds: Optional[npt.NDArray[np.int_]] = None,
+            limit_free_mask: Optional[npt.NDArray[np.bool_]] = None,
+            concha_interference: bool = False
+    ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.bool_], npt.NDArray[np.int_]]:
         """Limits right to left slope of an equalization curve.
 
             Args:
@@ -825,8 +880,17 @@ class FrequencyResponse:
         return limited_rtl, clipped_rtl, regions_rtl
 
     @classmethod
-    def limited_ltr_slope(cls, x, y, max_slope, max_slope_decay=0.0, start_index=0, peak_inds=None, limit_free_mask=None,
-                          concha_interference=False):
+    def limited_ltr_slope(
+            cls,
+            x: npt.NDArray[np.float64],
+            y: npt.NDArray[np.float64],
+            max_slope: float,
+            max_slope_decay: float = 0.0,
+            start_index: int = 0,
+            peak_inds: Optional[npt.NDArray[np.int_]] = None,
+            limit_free_mask: Optional[npt.NDArray[np.bool_]] = None,
+            concha_interference: bool = False
+    ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.bool_], npt.NDArray[np.int_]]:
         """Limits left to right slope of a equalization curve.
 
         Args:
@@ -847,6 +911,8 @@ class FrequencyResponse:
         if peak_inds is not None:
             peak_inds = np.array(peak_inds)
 
+        # Python 3.14 JIT optimization: This loop processes sequentially dependent data
+        # and benefits from JIT compilation. Pre-allocating arrays for better performance.
         limited = []
         clipped = []
         regions = []

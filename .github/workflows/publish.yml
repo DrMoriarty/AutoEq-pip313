@@ -1,0 +1,108 @@
+name: Publish to PyPI
+
+# Trigger workflow on version tags from master branch only
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:  # Allow manual trigger (TestPyPI only)
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history to check branch
+
+    - name: Verify tag is from master branch
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Get the branch that contains this tag
+        BRANCH=$(git branch -r --contains ${{ github.ref }} | grep -E 'origin/master$' || echo "")
+        if [ -z "$BRANCH" ]; then
+          echo "ERROR: Tag ${{ github.ref }} is not from master branch!"
+          echo "PyPI publishing is only allowed from master branch for security."
+          exit 1
+        fi
+        echo "✓ Tag ${{ github.ref }} is from master branch"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build hatchling
+
+    - name: Build package
+      run: python -m build
+
+    - name: Upload distributions
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only publish on tag push (not manual trigger)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    # PyPI Trusted Publisher environment
+    environment:
+      name: PyPI
+      url: https://pypi.org/p/autoeq-py313
+
+    # IMPORTANT: this permission is mandatory for trusted publishing
+    permissions:
+      id-token: write  # OIDC token for PyPI Trusted Publisher
+      contents: read   # Read repository contents
+
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      # No API token needed - uses OIDC Trusted Publisher
+      with:
+        verbose: true
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on manual trigger (for testing before actual release)
+    if: github.event_name == 'workflow_dispatch'
+
+    environment:
+      name: TestPyPI
+      url: https://test.pypi.org/p/autoeq-py313
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        verbose: true
