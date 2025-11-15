@@ -50,24 +50,26 @@ Before publishing to PyPI, you can test with TestPyPI:
 
 ## Publishing a New Release
 
-### Method 1: Create a Git Tag from Master (Automatic - RECOMMENDED)
+### Method 1: Push to Master (Automatic - RECOMMENDED)
 
 ```bash
-# 1. Make sure you're on master branch
-git checkout master
-git pull origin master
+# 1. Update version in pyproject.toml
+# version = "1.3.0"
 
-# 2. Tag the release (must be on master!)
-git tag v1.3.0
+# 2. Commit and push to master
+git add pyproject.toml
+git commit -m "Bump version to 1.3.0"
+git push origin master
 
-# 3. Push the tag
-git push origin v1.3.0
-
-# 4. The workflow will:
-#    - Verify the tag is from master branch
+# 3. The workflow will automatically:
 #    - Build the package
-#    - Publish to PyPI automatically
+#    - Publish to PyPI
 ```
+
+**WARNING**: Every push to master will trigger PyPI publishing!
+- Make sure version in `pyproject.toml` is updated before pushing
+- Use feature branches for development
+- Only merge to master when ready to release
 
 ### Method 2: Manual Trigger (TestPyPI only)
 
@@ -80,13 +82,13 @@ git push origin v1.3.0
 
 ## Workflow Features
 
-✅ **Master branch only**: Tags must be from `master` branch (verified automatically)
+✅ **Master branch only**: Publishes only on push to `master` branch
 ✅ **Automatic building**: Builds the package using Python 3.13 and Hatchling
 ✅ **Trusted Publishing**: No API tokens needed, uses OIDC authentication
 ✅ **Multiple environments**: Supports both PyPI and TestPyPI
 ✅ **Manual trigger**: Can be triggered manually for TestPyPI testing
 ✅ **Artifact upload**: Build artifacts are preserved for debugging
-✅ **Branch verification**: Explicit check prevents publishing from wrong branches
+✅ **Version from pyproject.toml**: Automatically reads version from package config
 
 ## Configuration Summary
 
@@ -97,29 +99,28 @@ git push origin v1.3.0
 | **PyPI Environment** | `PyPI` |
 | **TestPyPI Environment** | `TestPyPI` |
 | **Allowed branch** | `master` only |
-| **Trigger** | Git tags matching `v*.*.*` from `master` |
+| **Trigger** | Push to `master` branch |
 | **Python version** | 3.13 |
 
 ## Troubleshooting
 
-### Error: "Tag is not from master branch"
+### Error: "File already exists" on PyPI
 
 ```
-ERROR: Tag refs/tags/v1.3.0 is not from master branch!
-PyPI publishing is only allowed from master branch for security.
+ERROR: File already exists. See https://pypi.org/help/#file-name-reuse
 ```
 
 **Solution**:
-- Make sure you create and push tags from the `master` branch only
-- Delete the tag and recreate it from `master`:
-  ```bash
-  git tag -d v1.3.0
-  git push origin :refs/tags/v1.3.0
-  git checkout master
-  git pull origin master
-  git tag v1.3.0
-  git push origin v1.3.0
-  ```
+- PyPI does not allow re-uploading the same version
+- Bump the version in `pyproject.toml` before pushing to master
+- Delete the failed workflow run and try again with new version
+
+### Workflow not triggering
+
+**Check**:
+- Make sure you're pushing to the `master` branch (not a feature branch)
+- Verify the workflow file is in `.github/workflows/publish.yml`
+- Check GitHub Actions tab for any errors
 
 ### Error: "Trusted publishing exchange failure"
 
@@ -146,9 +147,19 @@ PyPI publishing is only allowed from master branch for security.
 🔒 **No long-lived tokens**: OIDC tokens are short-lived and scoped
 🔒 **No secret management**: No API tokens to rotate or secure
 🔒 **Master branch only**: Prevents releases from feature/development branches
-🔒 **Branch verification**: Double-check that tags come from `master`
+🔒 **Automatic releases**: No need for manual git tag operations
 🔒 **Audit trail**: All publishes are logged in GitHub Actions
 🔒 **Environment protection**: GitHub environments can require approvals
+
+## Best Practices
+
+⚠️ **Important**: Since every push to `master` triggers PyPI publishing:
+
+1. **Always use feature branches** for development
+2. **Update version** in `pyproject.toml` before merging to master
+3. **Use Pull Requests** to review changes before merging to master
+4. **Test locally** or use TestPyPI (manual trigger) before final release
+5. **Never force push** to master branch
 
 ## Additional Resources
 
