@@ -2,23 +2,40 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import os
 from glob import glob
-import multiprocessing
-from typing import Optional, Union, List, Tuple, Dict, Any
-import soundfile as sf
-import numpy as np
-import numpy.typing as npt
-from tqdm.auto import tqdm
-import yaml
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from autoeq.compat import get_optimal_executor, IS_FREE_THREADED
-from autoeq.constants import DEFAULT_MAX_GAIN, DEFAULT_TREBLE_F_LOWER, DEFAULT_TREBLE_F_UPPER, \
-    DEFAULT_TREBLE_GAIN_K, DEFAULT_FS, DEFAULT_BIT_DEPTH, DEFAULT_PHASE, DEFAULT_F_RES, DEFAULT_BASS_BOOST_GAIN, \
-    DEFAULT_BASS_BOOST_FC, DEFAULT_BASS_BOOST_Q, DEFAULT_SMOOTHING_WINDOW_SIZE, \
-    DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE, PEQ_CONFIGS, DEFAULT_TREBLE_BOOST_GAIN, DEFAULT_TREBLE_BOOST_Q, \
-    DEFAULT_TREBLE_BOOST_FC, DEFAULT_PREAMP, DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE, DEFAULT_MAX_SLOPE, \
-    DEFAULT_TILT
+import numpy as np
+import soundfile as sf
+import yaml
+from tqdm.auto import tqdm
+
+from autoeq.compat import IS_FREE_THREADED, get_optimal_executor
+from autoeq.constants import (
+    DEFAULT_BASS_BOOST_FC,
+    DEFAULT_BASS_BOOST_GAIN,
+    DEFAULT_BASS_BOOST_Q,
+    DEFAULT_BIT_DEPTH,
+    DEFAULT_F_RES,
+    DEFAULT_FS,
+    DEFAULT_MAX_GAIN,
+    DEFAULT_MAX_SLOPE,
+    DEFAULT_PHASE,
+    DEFAULT_PREAMP,
+    DEFAULT_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_TILT,
+    DEFAULT_TREBLE_BOOST_FC,
+    DEFAULT_TREBLE_BOOST_GAIN,
+    DEFAULT_TREBLE_BOOST_Q,
+    DEFAULT_TREBLE_F_LOWER,
+    DEFAULT_TREBLE_F_UPPER,
+    DEFAULT_TREBLE_GAIN_K,
+    DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE,
+    PEQ_CONFIGS,
+)
 from autoeq.frequency_response import FrequencyResponse
 
 

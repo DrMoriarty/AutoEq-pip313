@@ -2,40 +2,61 @@
 
 from __future__ import annotations
 
-import os
-from copy import deepcopy
-from typing import Optional, Union, List, Dict, Any, Literal, Tuple
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from matplotlib.ticker import FormatStrFormatter
 import math
-from pathlib import Path
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.signal import savgol_filter, find_peaks, minimum_phase, firwin2
-from scipy.stats import linregress
-from scipy.fft import next_fast_len
-import numpy as np
-import numpy.typing as npt
+import os
+import platform
 import urllib
-from time import time
-from PIL import Image
 import warnings
-from autoeq.constants import DEFAULT_F_MIN, DEFAULT_F_MAX, DEFAULT_STEP, DEFAULT_MAX_GAIN, DEFAULT_TREBLE_F_LOWER, \
-    DEFAULT_TREBLE_F_UPPER, DEFAULT_TREBLE_GAIN_K, DEFAULT_SMOOTHING_WINDOW_SIZE, \
-    DEFAULT_TREBLE_SMOOTHING_F_LOWER, DEFAULT_TREBLE_SMOOTHING_F_UPPER, \
-    DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE, DEFAULT_TILT, DEFAULT_FS, \
-    DEFAULT_F_RES, DEFAULT_BASS_BOOST_GAIN, DEFAULT_BASS_BOOST_FC, \
-    DEFAULT_BASS_BOOST_Q, DEFAULT_GRAPHIC_EQ_STEP, HARMAN_INEAR_PREFENCE_FREQUENCIES, \
-    HARMAN_OVEREAR_PREFERENCE_FREQUENCIES, PREAMP_HEADROOM, DEFAULT_MAX_SLOPE, \
-    DEFAULT_BIQUAD_OPTIMIZATION_F_STEP, DEFAULT_TREBLE_BOOST_GAIN, DEFAULT_TREBLE_BOOST_FC, DEFAULT_TREBLE_BOOST_Q, \
-    DEFAULT_PREAMP, DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE
-from autoeq.csv import parse_csv, create_csv
-from autoeq.peq import PEQ, LowShelf, HighShelf, Peaking
-from autoeq.utils import generate_frequencies, log_tilt, smoothing_window_size, log_f_sigmoid, log_log_gradient
+from copy import deepcopy
+from pathlib import Path
+from time import time
+from typing import Optional, Tuple
 
 # 한글 폰트 설정 추가
 import matplotlib.font_manager as fm
-import platform
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import numpy.typing as npt
+from PIL import Image
+from scipy.fft import next_fast_len
+from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.signal import find_peaks, firwin2, minimum_phase, savgol_filter
+from scipy.stats import linregress
+
+from autoeq.constants import (
+    DEFAULT_BASS_BOOST_FC,
+    DEFAULT_BASS_BOOST_GAIN,
+    DEFAULT_BASS_BOOST_Q,
+    DEFAULT_BIQUAD_OPTIMIZATION_F_STEP,
+    DEFAULT_F_MAX,
+    DEFAULT_F_MIN,
+    DEFAULT_F_RES,
+    DEFAULT_FS,
+    DEFAULT_GRAPHIC_EQ_STEP,
+    DEFAULT_MAX_GAIN,
+    DEFAULT_MAX_SLOPE,
+    DEFAULT_PREAMP,
+    DEFAULT_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_STEP,
+    DEFAULT_TILT,
+    DEFAULT_TREBLE_BOOST_FC,
+    DEFAULT_TREBLE_BOOST_GAIN,
+    DEFAULT_TREBLE_BOOST_Q,
+    DEFAULT_TREBLE_F_LOWER,
+    DEFAULT_TREBLE_F_UPPER,
+    DEFAULT_TREBLE_GAIN_K,
+    DEFAULT_TREBLE_SMOOTHING_F_LOWER,
+    DEFAULT_TREBLE_SMOOTHING_F_UPPER,
+    DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE,
+    HARMAN_INEAR_PREFENCE_FREQUENCIES,
+    HARMAN_OVEREAR_PREFERENCE_FREQUENCIES,
+    PREAMP_HEADROOM,
+)
+from autoeq.csv import create_csv, parse_csv
+from autoeq.peq import PEQ, HighShelf, LowShelf, Peaking
+from autoeq.utils import generate_frequencies, log_f_sigmoid, log_log_gradient, log_tilt, smoothing_window_size
 
 # 운영체제별 기본 폰트 설정
 system = platform.system()
@@ -150,7 +171,7 @@ class FrequencyResponse:
         try:
             with open(file_path, 'r', encoding='utf-8') as fh:
                 csv_str = fh.read().strip()
-        except UnicodeDecodeError as err:
+        except UnicodeDecodeError:
             with open(file_path, 'r', encoding='windows-1252') as fh:
                 csv_str = fh.read().strip()
         return cls(name=name, **parse_csv(csv_str))
@@ -188,7 +209,7 @@ class FrequencyResponse:
 
     def _optimize_peq_filters(self, configs, fs, max_time=None, preamp=DEFAULT_PREAMP):
         """Creates optimal set of parametric eq filters to match the equalization data"""
-        if type(configs) != list:
+        if not isinstance(configs, list):
             configs = [configs]
         peqs = []
         fr = self.__class__(name='optimizer', frequency=self.frequency, equalization=self.equalization)
@@ -219,7 +240,7 @@ class FrequencyResponse:
 
     def optimize_fixed_band_eq(self, configs, fs, max_time=None, preamp=DEFAULT_PREAMP, gain_range=None):
         """Creates optimal set of fixed eq filters to match the equalization data"""
-        if type(configs) != list:
+        if not isinstance(configs, list):
             configs = [configs]
         if gain_range is not None:
             fc_fr = self.copy()
@@ -514,42 +535,42 @@ class FrequencyResponse:
         # 디버깅 디렉토리 생성
         debug_dir = os.path.join(os.getcwd(), 'debug_plots')
         os.makedirs(debug_dir, exist_ok=True)
-        
+
         # 원래 코드
         bass_boost = LowShelf(self.frequency, fs, fc=bass_boost_fc, q=bass_boost_q, gain=bass_boost_gain)
         treble_boost = HighShelf(
             self.frequency, fs, fc=treble_boost_fc, q=treble_boost_q, gain=treble_boost_gain)
-            
+
         # 디버깅: bass_boost 시각화
         if bass_boost_gain != 0:
             fig_bass, ax_bass = plt.subplots(figsize=(10, 6))
             ax_bass.semilogx(self.frequency, bass_boost.fr, label=f'Bass Boost FC={bass_boost_fc}Hz, Q={bass_boost_q}, Gain={bass_boost_gain}dB')
-            
+
             # 100Hz 이하 영역 강조
             ax_bass.axvspan(10, 100, alpha=0.2, color='red', label='10-100Hz 영역')
-            
+
             ax_bass.set_title('Bass Boost 주파수 응답')
             ax_bass.set_xlabel('Frequency (Hz)')
             ax_bass.set_ylabel('Amplitude (dB)')
             ax_bass.grid(True)
             ax_bass.legend()
             ax_bass.set_xlim(10, 1000)
-            
+
             # 저주파 영역 데이터 출력
             low_freq_indices = self.frequency <= 100
             print(f"저주파 영역 Bass Boost 값: {bass_boost.fr[low_freq_indices]}")
-            
+
             fig_bass.savefig(os.path.join(debug_dir, 'bass_boost.png'))
             plt.close(fig_bass)
-            
+
         if tilt is not None:
             tilt = log_tilt(self.frequency, tilt)
         else:
             tilt = np.zeros(len(self.frequency))
-            
+
         # 결합된 타겟 생성
         combined_target = bass_boost.fr + treble_boost.fr + tilt
-        
+
         # 디버깅: 결합된 타겟 시각화
         fig_combined, ax_combined = plt.subplots(figsize=(10, 6))
         ax_combined.semilogx(self.frequency, bass_boost.fr, '--', label='Bass Boost')
@@ -563,7 +584,7 @@ class FrequencyResponse:
         ax_combined.legend()
         fig_combined.savefig(os.path.join(debug_dir, 'combined_target.png'))
         plt.close(fig_combined)
-        
+
         return combined_target
 
     def compensate(
@@ -1045,7 +1066,7 @@ class FrequencyResponse:
         if not len(self.frequency):
             raise ValueError('\'frequency\' has no data!')
         fig, ax = self.__class__.init_plot(fig=fig, ax=ax)
-        
+
         # 최신 matplotlib 버전에서는 딕셔너리 언패킹 방식이 변경되었습니다
         # 각 플롯 매개변수를 별도로 처리합니다
         if target and len(self.target):
@@ -1053,55 +1074,55 @@ class FrequencyResponse:
             if target_plot_kwargs:
                 kwargs.update(target_plot_kwargs)
             ax.plot(self.frequency, self.target, **kwargs)
-            
+
         if smoothed and len(self.smoothed):
             kwargs = {'label': 'Raw Smoothed', 'linewidth': 6, 'color': '#dbd3cd'}
             if smoothed_plot_kwargs:
                 kwargs.update(smoothed_plot_kwargs)
             ax.plot(self.frequency, self.smoothed, **kwargs)
-            
+
         if error_smoothed and len(self.error_smoothed):
             kwargs = {'label': 'Error Smoothed', 'linewidth': 6, 'color': '#ffcfc7'}
             if error_smoothed_plot_kwargs:
                 kwargs.update(error_smoothed_plot_kwargs)
             ax.plot(self.frequency, self.error_smoothed, **kwargs)
-            
+
         if raw and len(self.raw):
             kwargs = {'label': 'Raw', 'linewidth': 1.5, 'color': '#251f1b'}
             if raw_plot_kwargs:
                 kwargs.update(raw_plot_kwargs)
             ax.plot(self.frequency, self.raw, **kwargs)
-            
+
         if error and len(self.error):
             kwargs = {'label': 'Error', 'linewidth': 1.5, 'color': '#ff5b3d'}
             if error_plot_kwargs:
                 kwargs.update(error_plot_kwargs)
             ax.plot(self.frequency, self.error, **kwargs)
-            
+
         if equalization and len(self.equalization):
             kwargs = {'label': 'Equalization', 'linewidth': 6, 'color': '#ded400'}
             if equalization_plot_kwargs:
                 kwargs.update(equalization_plot_kwargs)
             ax.plot(self.frequency, self.equalization, **kwargs)
-            
+
         if parametric_eq and len(self.parametric_eq):
             kwargs = {'label': 'Parametric Eq', 'linewidth': 1.5, 'color': '#807900'}
             if parametric_eq_plot_kwargs:
                 kwargs.update(parametric_eq_plot_kwargs)
             ax.plot(self.frequency, self.parametric_eq, **kwargs)
-            
+
         if fixed_band_eq and len(self.fixed_band_eq):
             kwargs = {'label': 'Fixed Band Eq', 'linewidth': 1.5, 'color': '#a8a000', 'linestyle': '--'}
             if fixed_band_eq_plot_kwargs:
                 kwargs.update(fixed_band_eq_plot_kwargs)
             ax.plot(self.frequency, self.fixed_band_eq, **kwargs)
-            
+
         if equalized and len(self.equalized_raw):
             kwargs = {'label': 'Equalized', 'linewidth': 1.5, 'color': '#146899'}
             if equalized_plot_kwargs:
                 kwargs.update(equalized_plot_kwargs)
             ax.plot(self.frequency, self.equalized_raw, **kwargs)
-            
+
         ax.set_title(self.name)
         if len(ax.lines) > 0:
             ax.legend(fontsize=8)

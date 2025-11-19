@@ -1,14 +1,29 @@
-import os
 import argparse
 import multiprocessing
-from multiprocessing import freeze_support
+import os
 import warnings
+from multiprocessing import freeze_support
 
-from autoeq.constants import DEFAULT_MAX_GAIN, DEFAULT_TREBLE_F_LOWER, DEFAULT_TREBLE_F_UPPER, \
-    DEFAULT_TREBLE_GAIN_K, DEFAULT_FS, DEFAULT_BIT_DEPTH, DEFAULT_PHASE, DEFAULT_F_RES, DEFAULT_BASS_BOOST_FC, \
-    DEFAULT_BASS_BOOST_Q, DEFAULT_SMOOTHING_WINDOW_SIZE, DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE, DEFAULT_TREBLE_BOOST_FC, \
-    DEFAULT_TREBLE_BOOST_Q, DEFAULT_PREAMP, DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE, DEFAULT_MAX_SLOPE
 from autoeq.batch_processing import batch_processing
+from autoeq.constants import (
+    DEFAULT_BASS_BOOST_FC,
+    DEFAULT_BASS_BOOST_Q,
+    DEFAULT_BIT_DEPTH,
+    DEFAULT_F_RES,
+    DEFAULT_FS,
+    DEFAULT_MAX_GAIN,
+    DEFAULT_MAX_SLOPE,
+    DEFAULT_PHASE,
+    DEFAULT_PREAMP,
+    DEFAULT_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_SOUND_SIGNATURE_SMOOTHING_WINDOW_SIZE,
+    DEFAULT_TREBLE_BOOST_FC,
+    DEFAULT_TREBLE_BOOST_Q,
+    DEFAULT_TREBLE_F_LOWER,
+    DEFAULT_TREBLE_F_UPPER,
+    DEFAULT_TREBLE_GAIN_K,
+    DEFAULT_TREBLE_SMOOTHING_WINDOW_SIZE,
+)
 
 
 def cli_args():
@@ -172,7 +187,7 @@ def cli_args():
         else:
             raise ValueError('"--bass-boost" must have one value or three values separated by commas!')
         del args['bass_boost']
-        
+
     if 'treble_boost' in args:
         treble_boost = args['treble_boost'].split(',')
         if len(treble_boost) == 1:

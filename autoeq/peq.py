@@ -1,23 +1,39 @@
 from __future__ import annotations
 
 import warnings
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from time import time
-from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional
+
 import numpy as np
 import numpy.typing as npt
-from matplotlib import pyplot as plt, ticker
+from matplotlib import pyplot as plt
+from matplotlib import ticker
 from scipy.optimize import fmin_slsqp
 from scipy.signal import find_peaks
 from tabulate import tabulate
 
-from autoeq.constants import DEFAULT_SHELF_FILTER_MIN_FC, DEFAULT_SHELF_FILTER_MAX_FC, DEFAULT_SHELF_FILTER_MIN_Q, \
-    DEFAULT_SHELF_FILTER_MAX_Q, DEFAULT_SHELF_FILTER_MIN_GAIN, DEFAULT_SHELF_FILTER_MAX_GAIN, \
-    DEFAULT_PEAKING_FILTER_MIN_FC, DEFAULT_PEAKING_FILTER_MAX_FC, DEFAULT_PEAKING_FILTER_MIN_Q, \
-    DEFAULT_PEAKING_FILTER_MAX_Q, DEFAULT_PEAKING_FILTER_MIN_GAIN, DEFAULT_PEAKING_FILTER_MAX_GAIN, \
-    DEFAULT_PEQ_OPTIMIZER_MIN_F, DEFAULT_PEQ_OPTIMIZER_MAX_F, DEFAULT_PEQ_OPTIMIZER_MAX_TIME, \
-    DEFAULT_PEQ_OPTIMIZER_TARGET_LOSS, DEFAULT_PEQ_OPTIMIZER_MIN_CHANGE_RATE, DEFAULT_PEQ_OPTIMIZER_MIN_STD
+from autoeq.constants import (
+    DEFAULT_PEAKING_FILTER_MAX_FC,
+    DEFAULT_PEAKING_FILTER_MAX_GAIN,
+    DEFAULT_PEAKING_FILTER_MAX_Q,
+    DEFAULT_PEAKING_FILTER_MIN_FC,
+    DEFAULT_PEAKING_FILTER_MIN_GAIN,
+    DEFAULT_PEAKING_FILTER_MIN_Q,
+    DEFAULT_PEQ_OPTIMIZER_MAX_F,
+    DEFAULT_PEQ_OPTIMIZER_MAX_TIME,
+    DEFAULT_PEQ_OPTIMIZER_MIN_CHANGE_RATE,
+    DEFAULT_PEQ_OPTIMIZER_MIN_F,
+    DEFAULT_PEQ_OPTIMIZER_MIN_STD,
+    DEFAULT_PEQ_OPTIMIZER_TARGET_LOSS,
+    DEFAULT_SHELF_FILTER_MAX_FC,
+    DEFAULT_SHELF_FILTER_MAX_GAIN,
+    DEFAULT_SHELF_FILTER_MAX_Q,
+    DEFAULT_SHELF_FILTER_MIN_FC,
+    DEFAULT_SHELF_FILTER_MIN_GAIN,
+    DEFAULT_SHELF_FILTER_MIN_Q,
+)
 
 
 class PEQFilter(ABC):
@@ -742,7 +758,7 @@ class PEQ:
                 iter=1000,  # 최대 반복 횟수 명시
                 acc=1e-6,   # 수렴 정확도 명시
                 iprint=0)
-        except OptimizationFinished as err:
+        except OptimizationFinished:
             # Restore best params
             self._parse_optimizer_params(self.history.params[np.argmin(self.history.loss)])
 
