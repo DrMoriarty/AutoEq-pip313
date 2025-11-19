@@ -259,14 +259,14 @@ def process_file(
     if parametric_eq:
         parametric_peqs = fr.optimize_parametric_eq(
             parametric_eq_config, fs[0], preamp=preamp) if parametric_eq else None
-        fr.write_eqapo_parametric_eq(output_file_path.replace('.csv', ' ParametricEq.txt'), parametric_peqs)
+        fr.write_eqapo_parametric_eq(output_file_path.replace('.csv', ' ParametricEQ.txt'), parametric_peqs)
     else:
         parametric_peqs = None
 
     if fixed_band_eq:
         fixed_band_peq = fr.optimize_fixed_band_eq(
             fixed_band_eq_config, fs[0], preamp=preamp)[0] if fixed_band_eq else None
-        fr.write_eqapo_parametric_eq(output_file_path.replace('.csv', ' FixedBandEq.txt'), [fixed_band_peq])
+        fr.write_eqapo_parametric_eq(output_file_path.replace('.csv', ' FixedBandEQ.txt'), [fixed_band_peq])
     else:
         fixed_band_peq = None
 
