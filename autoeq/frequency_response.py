@@ -125,7 +125,7 @@ class FrequencyResponse:
         """Initializes data to a clean format. If None is passed and empty array is created. Non-numbers are removed."""
         if data is None:
             data = []
-        elif type(data) == float or type(data) == int:
+        elif isinstance(data, (float, int)):
             data = np.ones(self.frequency.shape) * data
         return np.array([None if x is None or math.isnan(x) else x for x in data])
 
