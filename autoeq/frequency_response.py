@@ -187,7 +187,7 @@ class FrequencyResponse:
         n = np.ceil(np.log(20000 / 20) / np.log(f_step))
         f = 20 * f_step ** np.arange(n)
         f = np.sort(np.unique(f.astype('int')))
-        fr.interpolate(f=f)
+        fr.interpolate(f=f, pol_order=1)
         if normalize:
             fr.raw -= np.max(fr.raw) + PREAMP_HEADROOM
         if preamp:
@@ -215,7 +215,7 @@ class FrequencyResponse:
         fr = self.__class__(name='optimizer', frequency=self.frequency, equalization=self.equalization)
         if preamp:
             fr.equalization += preamp
-        fr.interpolate(f_step=DEFAULT_BIQUAD_OPTIMIZATION_F_STEP)
+        fr.interpolate(f_step=DEFAULT_BIQUAD_OPTIMIZATION_F_STEP, pol_order=1)
         start_time = time()
         for config in configs:
             if 'optimizer' in config and max_time is not None:
@@ -234,7 +234,7 @@ class FrequencyResponse:
         fr = FrequencyResponse(
             name='PEQ', frequency=self.generate_frequencies(f_step=DEFAULT_BIQUAD_OPTIMIZATION_F_STEP),
             raw=np.sum(np.vstack([peq.fr for peq in peqs]), axis=0))
-        fr.interpolate(f=self.frequency)
+        fr.interpolate(f=self.frequency, pol_order=1)
         self.parametric_eq = fr.raw
         return peqs
 
@@ -245,7 +245,7 @@ class FrequencyResponse:
         if gain_range is not None:
             fc_fr = self.copy()
             fcs = np.array([[filt['fc'] for filt in config['filters']] for config in configs]).flatten()
-            fc_fr.interpolate(f=fcs)
+            fc_fr.interpolate(f=fcs, pol_order=1)
             for config in configs:
                 for filt in config['filters']:
                     target = fc_fr.equalization[np.argmin(np.abs(fc_fr.frequency - filt['fc']))]
@@ -255,7 +255,7 @@ class FrequencyResponse:
         fr = FrequencyResponse(
             name='PEQ', frequency=self.generate_frequencies(f_step=DEFAULT_BIQUAD_OPTIMIZATION_F_STEP),
             raw=np.sum(np.vstack([peq.fr for peq in peqs]), axis=0))
-        fr.interpolate(f=self.frequency)
+        fr.interpolate(f=self.frequency, pol_order=1)
         self.fixed_band_eq = fr.raw
         return peqs
 
@@ -296,18 +296,13 @@ class FrequencyResponse:
         # Interpolate to even sample interval
         fr = self.__class__(name='fr_data', frequency=self.frequency.copy(), raw=self.equalization.copy())
         f_min = np.max([fr.frequency[0], f_res])  # Save gain at lowest available frequency
-        # 데이터 포인트 수에 따라 보간 차수 결정
-        k_order_min_phase = 3 if len(fr.frequency) >= 4 else 1
-        try:
-            interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=k_order_min_phase)
-        except ValueError: # 예외 발생 시 선형으로 폴백
-            interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=1)
+        interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=1)
         gain_f_min = interpolator(np.log10(f_min))
         # Filter length, optimized for FFT speed
         n = round(fs // 2 / f_res)
         n = next_fast_len(n)
         f = np.linspace(0.0, fs // 2, n)
-        fr.interpolate(f) # pol_order 인자 제거, 내부적으로 큐빅/선형 선택
+        fr.interpolate(f=f, pol_order=1)
         # Set gain for all frequencies below original minimum frequency to match gain at the original minimum frequency
         fr.raw[fr.frequency <= f_min] = gain_f_min
         if normalize:
@@ -328,14 +323,9 @@ class FrequencyResponse:
         # Interpolate to even sample interval
         fr = self.__class__(name='fr_data', frequency=self.frequency, raw=self.equalization)
         f_min = np.max([fr.frequency[0], f_res])  # Save gain at lowest available frequency
-        # 데이터 포인트 수에 따라 보간 차수 결정
-        k_order_linear_phase = 3 if len(fr.frequency) >= 4 else 1
-        try:
-            interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=k_order_linear_phase)
-        except ValueError: # 예외 발생 시 선형으로 폴백
-            interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=1)
+        interpolator = InterpolatedUnivariateSpline(np.log10(fr.frequency), fr.raw, k=1)
         gain_f_min = interpolator(np.log10(f_min))
-        fr.interpolate(np.arange(0.0, fs // 2, f_res)) # pol_order 인자 제거, 내부적으로 큐빅/선형 선택
+        fr.interpolate(np.arange(0.0, fs // 2, f_res), pol_order=1)
         # Set gain for all frequencies below original minimum frequency to match gain at the original minimum frequency
         fr.raw[fr.frequency <= f_min] = gain_f_min
         if normalize:
@@ -422,11 +412,12 @@ class FrequencyResponse:
             self,
             f: Optional[npt.NDArray[np.float64]] = None,
             f_step: float = DEFAULT_STEP,
+            pol_order: int = 1,
             f_min: float = DEFAULT_F_MIN,
             f_max: float = DEFAULT_F_MAX
     ) -> None:
         """Interpolates missing values from previous and next value. Resets all but raw data.
-        Uses cubic spline interpolation if 4 or more data points are available, otherwise linear.
+        Uses linear spline interpolation by default to avoid high-frequency overshoot.
         """
         # Remove None values
         i = 0
@@ -441,12 +432,7 @@ class FrequencyResponse:
         log_f = np.log10(self.frequency)
         for key in keys:
             if len(self.__dict__[key]):
-                # 데이터 포인트 수에 따라 보간 차수 결정
-                k_order = 3 if len(self.frequency) >= 4 else 1
-                try:
-                    interpolators[key] = InterpolatedUnivariateSpline(log_f, self.__dict__[key], k=k_order)
-                except ValueError: # 예외 발생 시 (예: 모든 점이 동일한 x값) 선형으로 폴백
-                    interpolators[key] = InterpolatedUnivariateSpline(log_f, self.__dict__[key], k=1)
+                interpolators[key] = InterpolatedUnivariateSpline(log_f, self.__dict__[key], k=pol_order)
 
         if f is None:
             self.frequency = self.generate_frequencies(f_min=f_min, f_max=f_max, f_step=f_step)
@@ -478,13 +464,8 @@ class FrequencyResponse:
             Gain shifted
         """
         equal_energy_fr = self.__class__(name='equal_energy', frequency=self.frequency.copy(), raw=self.raw.copy())
-        equal_energy_fr.interpolate()
-        # 데이터 포인트 수에 따라 보간 차수 결정
-        k_order_center = 3 if len(equal_energy_fr.frequency) >= 4 else 1
-        try:
-            interpolator = InterpolatedUnivariateSpline(np.log10(equal_energy_fr.frequency), equal_energy_fr.raw, k=k_order_center)
-        except ValueError: # 예외 발생 시 선형으로 폴백
-            interpolator = InterpolatedUnivariateSpline(np.log10(equal_energy_fr.frequency), equal_energy_fr.raw, k=1)
+        equal_energy_fr.interpolate(pol_order=1)
+        interpolator = InterpolatedUnivariateSpline(np.log10(equal_energy_fr.frequency), equal_energy_fr.raw, k=1)
 
         if type(frequency) in [list, np.ndarray] and len(frequency) > 1:
             # Use the average of the gain values between the given frequencies as the difference to be subtracted
@@ -607,26 +588,16 @@ class FrequencyResponse:
         # Create interpolator for target
         if not np.array_equal(target.frequency, self.frequency):
             # Need to interpolate target to match self.frequency
-            k_order = 3 if len(target.frequency) >= 4 else 1
-            try:
-                interpolator = InterpolatedUnivariateSpline(
-                    np.log10(target.frequency), target.raw, k=k_order)
-            except ValueError:
-                interpolator = InterpolatedUnivariateSpline(
-                    np.log10(target.frequency), target.raw, k=1)
+            interpolator = InterpolatedUnivariateSpline(
+                np.log10(target.frequency), target.raw, k=1)
             target_raw_interp = interpolator(np.log10(self.frequency))
         else:
             target_raw_interp = target.raw.copy()
 
         # Center the interpolated target (calculate center value and subtract)
         # This is more efficient than creating a temporary FrequencyResponse object
-        k_order = 3 if len(self.frequency) >= 4 else 1
-        try:
-            center_interpolator = InterpolatedUnivariateSpline(
-                np.log10(self.frequency), target_raw_interp, k=k_order)
-        except ValueError:
-            center_interpolator = InterpolatedUnivariateSpline(
-                np.log10(self.frequency), target_raw_interp, k=1)
+        center_interpolator = InterpolatedUnivariateSpline(
+            np.log10(self.frequency), target_raw_interp, k=1)
         # Calculate center at 1000 Hz (default)
         center_value = center_interpolator(np.log10(1000))
         target_raw_centered = target_raw_interp - center_value
@@ -655,7 +626,7 @@ class FrequencyResponse:
             # Sound signature given, add it to target curve
             if not np.all(sound_signature.frequency == self.frequency):
                 # Interpolate sound signature to match self on the frequency axis
-                sound_signature.interpolate(self.frequency)
+                sound_signature.interpolate(f=self.frequency, pol_order=1)
             if sound_signature_smoothing_window_size:
                 sound_signature.smoothen(
                     window_size=sound_signature_smoothing_window_size,
@@ -1147,7 +1118,7 @@ class FrequencyResponse:
             - slope: Slope of linear regression of error
         """
         fr = self.copy()
-        fr.interpolate(HARMAN_OVEREAR_PREFERENCE_FREQUENCIES)
+        fr.interpolate(f=HARMAN_OVEREAR_PREFERENCE_FREQUENCIES, pol_order=1)
         sl = np.logical_and(fr.frequency >= 50, fr.frequency <= 10000)
         x = fr.frequency[sl]
         y = fr.error[sl]
@@ -1166,7 +1137,7 @@ class FrequencyResponse:
             - mean: Mean of absolute error
         """
         fr = self.copy()
-        fr.interpolate(HARMAN_INEAR_PREFENCE_FREQUENCIES)
+        fr.interpolate(f=HARMAN_INEAR_PREFENCE_FREQUENCIES, pol_order=1)
         sl = np.logical_and(fr.frequency >= 20, fr.frequency <= 10000)
         x = fr.frequency[sl]
         y = fr.error[sl]
@@ -1220,7 +1191,7 @@ class FrequencyResponse:
             treble_gain_k: Coefficient for treble gain, positive and negative. Useful for disabling or reducing
                            equalization power in treble region. Defaults to 1.0 (not limited).
         """
-        self.interpolate()
+        self.interpolate(pol_order=1)
         self.center()
         self.compensate(
             target, bass_boost_gain=bass_boost_gain, bass_boost_fc=bass_boost_fc, bass_boost_q=bass_boost_q,
