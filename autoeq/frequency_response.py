@@ -513,58 +513,16 @@ class FrequencyResponse:
         Returns:
             Target for equalization
         """
-        # 디버깅 디렉토리 생성
-        debug_dir = os.path.join(os.getcwd(), 'debug_plots')
-        os.makedirs(debug_dir, exist_ok=True)
-
-        # 원래 코드
         bass_boost = LowShelf(self.frequency, fs, fc=bass_boost_fc, q=bass_boost_q, gain=bass_boost_gain)
         treble_boost = HighShelf(
             self.frequency, fs, fc=treble_boost_fc, q=treble_boost_q, gain=treble_boost_gain)
-
-        # 디버깅: bass_boost 시각화
-        if bass_boost_gain != 0:
-            fig_bass, ax_bass = plt.subplots(figsize=(10, 6))
-            ax_bass.semilogx(self.frequency, bass_boost.fr, label=f'Bass Boost FC={bass_boost_fc}Hz, Q={bass_boost_q}, Gain={bass_boost_gain}dB')
-
-            # 100Hz 이하 영역 강조
-            ax_bass.axvspan(10, 100, alpha=0.2, color='red', label='10-100Hz 영역')
-
-            ax_bass.set_title('Bass Boost 주파수 응답')
-            ax_bass.set_xlabel('Frequency (Hz)')
-            ax_bass.set_ylabel('Amplitude (dB)')
-            ax_bass.grid(True)
-            ax_bass.legend()
-            ax_bass.set_xlim(10, 1000)
-
-            # 저주파 영역 데이터 출력
-            low_freq_indices = self.frequency <= 100
-            print(f"저주파 영역 Bass Boost 값: {bass_boost.fr[low_freq_indices]}")
-
-            fig_bass.savefig(os.path.join(debug_dir, 'bass_boost.png'))
-            plt.close(fig_bass)
 
         if tilt is not None:
             tilt = log_tilt(self.frequency, tilt)
         else:
             tilt = np.zeros(len(self.frequency))
 
-        # 결합된 타겟 생성
         combined_target = bass_boost.fr + treble_boost.fr + tilt
-
-        # 디버깅: 결합된 타겟 시각화
-        fig_combined, ax_combined = plt.subplots(figsize=(10, 6))
-        ax_combined.semilogx(self.frequency, bass_boost.fr, '--', label='Bass Boost')
-        ax_combined.semilogx(self.frequency, treble_boost.fr, '--', label='Treble Boost')
-        ax_combined.semilogx(self.frequency, tilt, '--', label='Tilt')
-        ax_combined.semilogx(self.frequency, combined_target, label='Combined Target')
-        ax_combined.set_title('결합된 타겟 주파수 응답')
-        ax_combined.set_xlabel('Frequency (Hz)')
-        ax_combined.set_ylabel('Amplitude (dB)')
-        ax_combined.grid(True)
-        ax_combined.legend()
-        fig_combined.savefig(os.path.join(debug_dir, 'combined_target.png'))
-        plt.close(fig_combined)
 
         return combined_target
 
