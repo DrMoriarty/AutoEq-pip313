@@ -1,0 +1,28 @@
+optimizer:
+  min_f: 20
+  max_f: 20000  # Only optimizing up to 20 kHz because of we only have 14 filters
+  max_time: null  # Letting optimizer finish since this is probably for a one-off custom optimization, not for API
+  min_change_rate: null  # Letting optimizer finish
+  min_std: null  # Letting optimizer finish
+filter_defaults:
+  min_fc: 20
+  max_fc: 20000
+  min_q: 0.10
+  max_q: 15
+  min_gain: -12
+  max_gain: 12
+filters:
+  - type: LOW_SHELF
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: PEAKING
+  - type: HIGH_SHELF
