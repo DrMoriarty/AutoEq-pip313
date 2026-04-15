@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import numpy.typing as npt
+import yaml
 from PIL import Image
 from scipy.fft import next_fast_len
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -276,6 +277,22 @@ class FrequencyResponse:
                 s += f'Filter {i + 1}: ON {types[filt.__class__.__name__]} Fc {filt.fc:.0f} Hz Gain {filt.gain:.1f} dB Q {filt.q:.2f}\n'
             f.write(s)
 
+    def write_parametric_eq_config(self, file_path, peqs, config):
+        f = self.generate_frequencies(f_step=DEFAULT_BIQUAD_OPTIMIZATION_F_STEP)
+        compound = PEQ(f, peqs[0].fs, [])
+        filters = []
+        for peq in peqs:
+            for filt in peq.filters:
+                compound.add_filter(filt)
+        for i, filt in enumerate(compound.filters):
+            filters.append({'type': filt.name, 'fc': int(f'{filt.fc:.0f}'), 'q': float(f'{filt.q:0.2f}')});
+        data = {}
+        data['optimizer'] = config['optimizer']
+        data['filter_defaults'] = config['filter_defaults']
+        data['filters'] = filters
+        with open(file_path, 'w', encoding='utf-8') as f:
+            yaml.dump(data, f)
+
     def minimum_phase_impulse_response(self, fs=DEFAULT_FS, f_res=DEFAULT_F_RES, normalize=True, preamp=DEFAULT_PREAMP):
         """Generates minimum phase impulse response
 
@@ -491,6 +508,21 @@ class FrequencyResponse:
         # Everything but raw, smoothed, errors and target is affected by centering, reset them
         self.reset(
             equalization=True, fixed_band_eq=True, parametric_eq=True, equalized_raw=True, equalized_smoothed=True)
+        return -diff
+
+    def shift(self, diff=0):
+        if diff != 0:
+            self.raw -= diff
+            if len(self.smoothed):
+                self.smoothed -= diff
+            if len(self.error):
+                self.error += diff
+            if len(self.error_smoothed):
+                self.error_smoothed += diff
+
+            # Everything but raw, smoothed, errors and target is affected by centering, reset them
+            self.reset(
+                equalization=True, fixed_band_eq=True, parametric_eq=True, equalized_raw=True, equalized_smoothed=True)
         return -diff
 
     def create_target(
@@ -1149,8 +1181,6 @@ class FrequencyResponse:
             treble_gain_k: Coefficient for treble gain, positive and negative. Useful for disabling or reducing
                            equalization power in treble region. Defaults to 1.0 (not limited).
         """
-        self.interpolate(pol_order=1)
-        self.center()
         self.compensate(
             target, bass_boost_gain=bass_boost_gain, bass_boost_fc=bass_boost_fc, bass_boost_q=bass_boost_q,
             treble_boost_gain=treble_boost_gain, treble_boost_fc=treble_boost_fc, treble_boost_q=treble_boost_q,

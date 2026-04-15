@@ -186,6 +186,9 @@ class PEQFilter(ABC):
     def band_penalty(self):
         pass
 
+    @property
+    def name(self):
+        return 'PEAKING'
 
 class Peaking(PEQFilter):
     def __init__(self, f, fs, fc=None, optimize_fc=None, min_fc=DEFAULT_PEAKING_FILTER_MIN_FC,
@@ -402,6 +405,9 @@ class HighShelf(ShelfFilter):
 
         return 1.0, a1, a2, b0, b1, b2
 
+    @property
+    def name(self):
+        return 'HIGH_SHELF'
 
 class LowShelf(ShelfFilter):
     def init(self, target):
@@ -459,6 +465,9 @@ class LowShelf(ShelfFilter):
 
         return 1.0, a1, a2, b0, b1, b2
 
+    @property
+    def name(self):
+        return 'LOW_SHELF'
 
 class OptimizationHistory:
     def __init__(self):

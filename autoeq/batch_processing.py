@@ -49,6 +49,7 @@ def batch_processing(
         parametric_eq: bool = False,
         fixed_band_eq: bool = False,
         ten_band_eq: bool = False,
+        realphones_eq: bool = False,
         parametric_eq_config: Optional[Union[str, List[Union[str, Dict[str, Any]]]]] = None,
         fixed_band_eq_config: Optional[Union[str, Dict[str, Any]]] = None,
         convolution_eq: bool = False,
@@ -73,10 +74,11 @@ def batch_processing(
         treble_f_upper: float = DEFAULT_TREBLE_F_UPPER,
         treble_gain_k: float = DEFAULT_TREBLE_GAIN_K,
         preamp: float = DEFAULT_PREAMP,
+        centering: Optional[str] = None,
         thread_count: int = 0
 ) -> List['FrequencyResponse']:
     """Parses files in input directory and produces equalization results in output directory."""
-    if not target and (parametric_eq or fixed_band_eq or ten_band_eq or convolution_eq):
+    if not target and (parametric_eq or fixed_band_eq or ten_band_eq or convolution_eq or realphones_eq):
         raise ValueError('Target must be specified when equalizing.')
 
     if input_file:
@@ -158,7 +160,7 @@ def batch_processing(
                     bit_depth, target, convolution_eq, f_res, fixed_band_eq, fs, parametric_eq_config,
                     fixed_band_eq_config, max_gain, max_slope, window_size, treble_window_size,
                     parametric_eq, phase, sound_signature, sound_signature_smoothing_window_size,
-                    standardize_input, ten_band_eq, tilt, treble_f_lower, treble_f_upper, treble_gain_k, preamp)
+                    standardize_input, ten_band_eq, realphones_eq, tilt, treble_f_lower, treble_f_upper, treble_gain_k, preamp, centering)
             args_list.append(args)
 
     if not thread_count:
@@ -210,11 +212,13 @@ def process_file(
         sound_signature_smoothing_window_size: int,
         standardize_input: bool,
         ten_band_eq: bool,
+        realphones_eq: bool,
         tilt: float,
         treble_f_lower: float,
         treble_f_upper: float,
         treble_gain_k: float,
-        preamp: float
+        preamp: float,
+        centering: str
 ) -> 'FrequencyResponse':
     # The method assumes fs is iterable, ensure it really is
     try:
@@ -228,14 +232,36 @@ def process_file(
         fr.interpolate()
         fr.center()
         fr.write_csv(input_file_path)
+    else:
+        fr.interpolate()
+
+    min_mean_error = False
+    if centering is not None:
+        if centering == 'min':
+            fr.center()
+            min_mean_error = True
+        elif centering == 'fixed':
+            fr.center()
+        else:
+            # numbers for manual shift
+            diff = int(centering)
+            if diff != 0:
+                fr.shift(diff)
+            else:
+                raise ValueError('Invalid centering strategy. Accepted values are "min", "fixed" or shift number in dB.')
+
     if ten_band_eq:
         # Ten band eq is a shortcut for setting Fc and Q values to standard 10-band equalizer filters parameters
         fixed_band_eq = True
         fixed_band_eq_config = PEQ_CONFIGS['10_BAND_GRAPHIC_EQ']
 
+    if realphones_eq:
+        parametric_eq = True
+        parametric_eq_config = PEQ_CONFIGS['REALPHONES_PEQ']
+
     fr.process(
         target=target,
-        min_mean_error=True,
+        min_mean_error=min_mean_error,
         bass_boost_gain=bass_boost_gain,
         bass_boost_fc=bass_boost_fc,
         bass_boost_q=bass_boost_q,
@@ -260,6 +286,8 @@ def process_file(
         parametric_peqs = fr.optimize_parametric_eq(
             parametric_eq_config, fs[0], preamp=preamp) if parametric_eq else None
         fr.write_eqapo_parametric_eq(output_file_path.replace('.csv', ' ParametricEQ.txt'), parametric_peqs)
+
+        fr.write_parametric_eq_config(output_file_path.replace('.csv', ' peq.yaml'), parametric_peqs, parametric_eq_config)
     else:
         parametric_peqs = None
 

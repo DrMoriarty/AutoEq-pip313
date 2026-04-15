@@ -71,6 +71,25 @@ HARMAN_INEAR_PREFENCE_FREQUENCIES = [20.0, 21.2, 22.4, 23.6, 25.0, 26.5, 28.0, 3
 PREAMP_HEADROOM = 0.2
 
 PEQ_CONFIGS = {
+    'REALPHONES_PEQ': {
+        'optimizer': {
+            'min_f': 20,
+            'max_f': 20000
+        },
+        'filter_defaults': {
+            'min_fc': 20,
+            'max_fc': 20000,
+            'min_q': 0.10,
+            'max_q': 15,
+            'min_gain': -12,
+            'max_gain': 12
+        },
+        'filters': [{
+            'type': 'LOW_SHELF'
+        },{
+            'type': 'HIGH_SHELF'
+        }] + [{'type': 'PEAKING'}] * 12
+    },
     '10_BAND_GRAPHIC_EQ': {
         'optimizer': {'min_std': 0.01},
         'filter_defaults': {'q': math.sqrt(2), 'min_gain': -12.0, 'max_gain': 12.0, 'type': 'PEAKING'},

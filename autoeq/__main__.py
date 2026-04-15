@@ -51,6 +51,8 @@ def cli_args():
                             help='Will produce fixed band eq settings if this parameter exists, no value needed.')
     arg_parser.add_argument('--ten-band-eq', action='store_true',
                             help='Shortcut parameter for activating standard ten band eq optimization.')
+    arg_parser.add_argument('--realphones-eq', action='store_true',
+                            help='Shortcut parameter for activating RealPhones eq optimization.')
     arg_parser.add_argument('--parametric-eq-config', type=str,
                             default='4_PEAKING_WITH_LOW_SHELF,4_PEAKING_WITH_HIGH_SHELF',
                             help='Name of parametric equalizer configuration or a path to a configuration file. '
@@ -164,6 +166,8 @@ def cli_args():
                                  'Defaults to 1.')
     arg_parser.add_argument('--preamp', type=float, default=DEFAULT_PREAMP,
                             help='Extra pre-amplification to be applied to equalizer settings in dB')
+    arg_parser.add_argument('--centering', type=str,
+                            help='Center data strategy. Accepted values are "min" (minimal difference between target and source), "fixed" (zero at 1k Hz) or number of dB to shift data.')
     args = vars(arg_parser.parse_args())
 
     # Replace hyphens with underscores to be compatible with the batch_processing method signature
